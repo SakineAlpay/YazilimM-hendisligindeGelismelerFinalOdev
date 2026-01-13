@@ -1,0 +1,38 @@
+Yapay Zeka (Gemini) Tarafından Hazırlanan Güvenlik ve İyileştirme Raporu
+
+Proje: İngilizce Öğrenme API
+
+1. Hassas Verilerin Kod İçinde Saklanması (Hardcoded Secrets)
+Tespit: app.py dosyasında SECRET_KEY değeri 'super-secret-key' olarak açıkça yazılmıştır. Ayrıca docker-compose.yml dosyasında veritabanı şifreleri açık metin halindedir.
+
+Risk: Kodlar GitHub gibi bir platforma yüklendiğinde şifreler herkes tarafından görülebilir.
+
+Öneri: Bu değerler koddan çıkarılmalı ve .env (çevre değişkenleri) dosyasından os.getenv() metodu ile okunmalıdır.
+
+2. Debug Modunun Açık Unutulması
+Tespit: docker-compose.yml dosyasında FLASK_DEBUG=1 olarak ayarlanmıştır.
+
+Risk: Canlı (Production) ortamda bu mod açık kalırsa, bir hata oluştuğunda sistemin tüm kod yapısı ve hassas sistem yolları saldırganlara görünür.
+
+Öneri: Canlı ortama geçilirken bu değer kesinlikle 0 veya False yapılmalıdır.
+
+3. CORS Politikasının Çok Geniş Olması
+Tespit: app.py içinde CORS(app) komutu parametresiz kullanılmıştır.
+
+Risk: Bu ayar, dünyadaki herhangi bir web sitesinin senin API'na istek atmasına izin verir. Kötü niyetli siteler kullanıcı oturumlarını çalabilir.
+
+Öneri: Sadece kendi frontend'inin çalıştığı domain'e izin verilmelidir. Örnek: CORS(app, resources={r"/api/*": {"origins": "http://localhost:8090"}})
+
+4. Kaba Kuvvet (Brute-Force) Koruması Eksikliği
+Tespit: auth.py içindeki /login endpoint'inde herhangi bir deneme sınırlaması yoktur.
+
+Risk: Bir saldırgan, saniyede binlerce şifre deneyerek kullanıcı hesaplarını ele geçirebilir.
+
+Öneri: Flask-Limiter kütüphanesi kullanılarak, bir IP adresinden dakikada en fazla 5 giriş denemesi yapılacak şekilde kısıtlama (Rate Limiting) getirilmelidir.
+
+5. Veritabanı Transaction Yönetimi
+Tespit: Veritabanı işlemlerinde hata oluşması durumunda otomatik rollback (geri alma) mekanizması açıkça görülmemektedir.
+
+Risk: Bir işlem yarıda kesilirse veritabanında tutarsız veya bozuk veri kalabilir.
+
+Öneri: Tüm veritabanı işlemleri try-except blokları içine alınmalı ve except bloğunda db.session.rollback() çalıştırılarak veri bütünlüğü korunmalıdır.
